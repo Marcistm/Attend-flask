@@ -57,5 +57,5 @@ def get_data():  # put application's code here
 
 
 if __name__ == '__main__':
-    app.run(debug='True')
+    app.run(debug='True',port=5001)
 
