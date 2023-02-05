@@ -53,7 +53,7 @@ def get_data():  # put application's code here
     con=UseSQLServer()
     df=con.get_mssql_data(sql)
     print(df)
-    return 'Hello World!'
+    return jsonify(code=200, data=df.fillna('').to_dict('records'), msg="success")
 
 
 if __name__ == '__main__':
