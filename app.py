@@ -49,11 +49,31 @@ def change_passwd():
 @app.route('/get/data',methods=['GET'])
 def get_data():  # put application's code here
     sql=request.args.get('sql')
-    print(sql)
     con=UseSQLServer()
     df=con.get_mssql_data(sql)
-    print(df)
     return jsonify(code=200, data=df.fillna('').to_dict('records'), msg="success")
+
+@app.route('/password/reset',methods=['GET'])
+def password_reset():  # put application's code here
+    username=request.args.get('username')
+    con=UseSQLServer()
+    sql=f"update user_table set password='055b3a993737b01c9c042f46420c84fe' where username='{username}'"
+    df=con.update_mssql_data(sql)
+    if df == 'success':
+        return jsonify(code=200, msg=df)
+    else:
+        return jsonify(code=404, msg="操作失败")
+
+@app.route('/user/delete',methods=['GET'])
+def user_delete():  # put application's code here
+    username=request.args.get('username')
+    con=UseSQLServer()
+    sql=f"update user_table set password='055b3a993737b01c9c042f46420c84fe' where username='{username}'"
+    df=con.update_mssql_data(sql)
+    if df == 'success':
+        return jsonify(code=200, msg=df)
+    else:
+        return jsonify(code=404, msg="操作失败")
 
 
 if __name__ == '__main__':
