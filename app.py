@@ -1,5 +1,6 @@
 import json
 
+import pandas as pd
 from flask import Flask, request, jsonify
 from flask_cors import CORS, cross_origin
 import jwt
@@ -57,7 +58,7 @@ def get_data():  # put application's code here
 def password_reset():  # put application's code here
     username=request.args.get('username')
     con=UseSQLServer()
-    sql=f"update user_table set password='055b3a993737b01c9c042f46420c84fe' where username='{username}'"
+    sql=f"update user_table set password='055b3a993737b01c9c042f46420c84fe',has_login=0 where username='{username}'"
     df=con.update_mssql_data(sql)
     if df == 'success':
         return jsonify(code=200, msg=df)
@@ -68,12 +69,32 @@ def password_reset():  # put application's code here
 def user_delete():  # put application's code here
     username=request.args.get('username')
     con=UseSQLServer()
-    sql=f"update user_table set password='055b3a993737b01c9c042f46420c84fe' where username='{username}'"
+    sql=f"delete from user_table where username='{username}'"
     df=con.update_mssql_data(sql)
     if df == 'success':
         return jsonify(code=200, msg=df)
     else:
         return jsonify(code=404, msg="操作失败")
+
+@app.route('/upload/data', methods=['POST'])
+def upload_data():
+    val = json.loads(request.get_data())
+    con=UseSQLServer()
+    data = val['data']
+    table= val['table']
+    df=pd.DataFrame(data)
+    df_copy=df[['username', 'name']].copy()
+    if table=='teacher':
+        df_copy.loc[:, 'privilege'] = 1
+    if table=='student':
+        df_copy.loc[:, 'privilege'] = 0
+    tag=con.write_table(table,df)
+    if not tag:
+        return jsonify(code=404, msg='上传失败'), 404
+    tag=con.write_table('user_table',df_copy)
+    if not tag:
+        return jsonify(code=404, msg='上传失败'), 404
+    return jsonify(code=200,msg='上传成功')
 
 
 if __name__ == '__main__':
