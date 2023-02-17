@@ -66,12 +66,15 @@ def password_reset():  # put application's code here
         return jsonify(code=404, msg="操作失败")
 
 @app.route('/user/delete',methods=['GET'])
-def user_delete():  # put application's code here
+def user_delete():
     username=request.args.get('username')
+    table=request.args.get('table')
     con=UseSQLServer()
     sql=f"delete from user_table where username='{username}'"
+    sql1=f"delete from {table} where username='{username}'"
     df=con.update_mssql_data(sql)
-    if df == 'success':
+    df1=con.update_mssql_data(sql1)
+    if df == 'success' and df1 == 'success':
         return jsonify(code=200, msg=df)
     else:
         return jsonify(code=404, msg="操作失败")

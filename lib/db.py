@@ -60,7 +60,7 @@ class UseSQLServer(object):
         return True
 
     def write_table(self, tb_name, df):
-        params = urllib.parse.quote_plus("DRIVER={SQL Server};SERVER=%s;DATABASE=%s;UID=%s;PWD=%s" % (
+        params = urllib.parse.quote_plus("DRIVER={ODBC Driver 17 for SQL Server};SERVER=%s;DATABASE=%s;UID=%s;PWD=%s" % (
         self.config['host'], self.config['database'], self.config['user'], self.config['password']))
         engine = create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
         engine.connect()
