@@ -1,8 +1,22 @@
 import base64
 import hashlib
 import hmac
+import os
+import uuid
 from datetime import datetime
 import time
+
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
+
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def random_filename(filename):
+    ext = os.path.splitext(filename)[-1]
+    return uuid.uuid4().hex + ext
+
 
 def generate_token(key, expire=3600):
     """
@@ -16,6 +30,7 @@ def generate_token(key, expire=3600):
     token = ts_str + ':' + sha1_tshexstr
     b64_token = base64.urlsafe_b64encode(token.encode("utf-8"))
     return b64_token.decode("utf-8")
+
 
 def my_md5(s, salt=''):
     """
