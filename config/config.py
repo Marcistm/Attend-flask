@@ -1,8 +1,10 @@
-sqlserver_config = {
-    'host': "127.0.0.1",
-    'user':'mxy',
-    'password':'990923',
+
+
+system_config={
+    'host': "43.143.116.236",
     'port': "1433",
-    'database': "work",
-    'charset': "UTF-8"
+    'user': 'sa',
+    'password': '4568520sxgs.',
+    'database': "attend",
+    'charset': "UTF-8",
 }

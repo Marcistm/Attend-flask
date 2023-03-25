@@ -60,16 +60,15 @@ class UseSQLServer(object):
         return True
 
     def write_table(self, tb_name, df):
-        params = urllib.parse.quote_plus("DRIVER={ODBC Driver 17 for SQL Server};SERVER=%s;DATABASE=%s;UID=%s;PWD=%s" % (
-        self.config['host'], self.config['database'], self.config['user'], self.config['password']))
-        engine = create_engine("mssql+pyodbc:///?odbc_connect=%s" % params)
-        engine.connect()
-        try:
-            df.to_sql(name=tb_name, con=engine, if_exists='append', index=False, index_label=False)
-            return True
-        except Exception as e:
-            print(e)
-            return False
+        columns = ', '.join(df.columns)
+        values = ', '.join(['%s' for i in range(len(df.columns))])
+        insert_query = f'INSERT INTO {tb_name} ({columns}) VALUES ({values})'
+        # 执行INSERT语句
+        cursor = self.con.cursor()
+        for row in df.itertuples(index=False):
+            cursor.execute(insert_query, row)
+        self.con.commit()
+
 
     def get_mssql_data(self, sql):
         cur = self.cur
