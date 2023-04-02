@@ -2,8 +2,7 @@ import urllib.parse
 
 import pymssql
 import pandas as pd
-from sqlalchemy import create_engine
-from urllib.parse import quote_plus
+
 
 
 class UseSQLServer(object):

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 import time
 
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif','docx'}
 
 
 def allowed_file(filename):

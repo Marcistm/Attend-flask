@@ -129,8 +129,7 @@ def ask_for_leave_preview():
          "inner join file_table b on a.id=b.original_id "\
          f"where b.type=N'请假' and a.id={id}"
     df=con.get_mssql_data(sql)
-    print(df)
-    return jsonify(code=200, msg="提交成功")
+    return jsonify(code=200, msg="success",data=df.fillna('').to_dict('records'))
 
 @app.route('/ask_for_leave/add', methods=['POST'])
 def ask_for_leave_add():
@@ -146,7 +145,8 @@ def ask_for_leave_add():
     df1=df1.append({"username":username,"name":name,'reason':reason,'start_time':start_time,'end_time':end_time}, ignore_index=True)
     con.write_table('ask_for_leave', df1)
     sql='SELECT MAX(id) as id FROM ask_for_leave'
-    id=con.get_mssql_data(sql).iloc[0]['id']
+    df=con.get_mssql_data(sql)
+    id = con.get_mssql_data(sql).iloc[0]['id']
     df = pd.DataFrame(columns=["file_name", "file_url"])
     for file in files:
         if not allowed_file(file.filename):
@@ -167,15 +167,16 @@ def ask_for_leave_delete():
     val = json.loads(request.get_data())
     con=UseSQLServer()
     id=val['id']
-    sql=f"select file_url from file_table where original_id='{id}' and type='请假'"
+    sql=f"select file_url from file_table where original_id='{id}' and type=N'请假'"
     df=con.get_mssql_data(sql)
     files = df['file_url'].to_numpy()
     for i in files:
+        i=os.path.basename(i)
         i = os.path.join(app.root_path,UPLOAD_FOLDER, i)
         # 删除文件
         os.remove(i)
-    sql = f"DELETE FROM ask_for_leave WHERE id={id})"
-    sql1 = f"delete from file_table where original_id={id} and type='请假'"
+    sql = f"DELETE FROM ask_for_leave WHERE id={id}"
+    sql1 = f"delete from file_table where original_id={id} and type=N'请假'"
     con=UseSQLServer()
     df=con.update_mssql_data(sql)
     df1=con.update_mssql_data(sql1)
