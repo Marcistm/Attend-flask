@@ -73,17 +73,15 @@ def password_reset():
         return jsonify(code=404, msg="操作失败")
 
 
-@app.route('/user/delete', methods=['GET'])
-def user_delete():
-    username = request.args.get('username')
+@app.route('/delete', methods=['GET'])
+def delete():
+    id = request.args.get('id')
     table = request.args.get('table')
     con = UseSQLServer()
-    sql = f"delete from user_table where username='{username}'"
-    sql1 = f"delete from {table} where username='{username}'"
-    df = con.update_mssql_data(sql)
+    sql1 = f"delete from {table} where id='{id}'"
     df1 = con.update_mssql_data(sql1)
-    if df == 'success' and df1 == 'success':
-        return jsonify(code=200, msg=df)
+    if df1 == 'success':
+        return jsonify(code=200, msg=df1)
     else:
         return jsonify(code=404, msg="操作失败")
 
@@ -202,6 +200,39 @@ def student_health_record_update():
 @app.route('/attachment/<path:filename>')
 def get_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route('/ask_for_leave/update', methods=['POST'])
+def ask_for_leave_update():
+    con=UseSQLServer()
+    data = request.form
+    id=data['id']
+    reason=data['reason']
+    start_time=data['start_time']
+    end_time =data['end_time']
+    df1=pd.DataFrame()
+    sql = f"UPDATE ask_for_leave SET reason='{reason}', start_time='{start_time}', end_time='{end_time}' WHERE id={id}"
+    con.update_mssql_data(sql)
+    sql=f"delete from file_table where original_id={id} and type=N'请假'"
+    con.update_mssql_data(sql)
+    files=data['file_list']
+    df = pd.DataFrame(columns=["file_name", "file_url"])
+    for file in files:
+        if not allowed_file(file.filename):
+            return jsonify(code=400, msg="file type not allowed")
+        filename = random_filename(file.filename)
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(os.path.join(app.root_path, filepath))
+        file_url = urljoin(request.host_url, filepath)
+        if df.empty:
+            df = df.append({"file_name": file.filename, "file_url": file_url,'original_id':id,'type':'请假'}, ignore_index=True)
+        else:
+            df = df.append({"file_name": file.filename, "file_url": file_url,'original_id':id,'type':'请假'}, ignore_index=True)
+    con.write_table('file_table',df)
+    return jsonify(code=200, msg="更新成功")
+
+@app.route('/upload', methods=['POST'])
+def upload():
+    pass
 
 
 if __name__ == '__main__':
