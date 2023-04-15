@@ -4,7 +4,6 @@ import pymssql
 import pandas as pd
 
 
-
 class UseSQLServer(object):
     def __init__(self, config=None):
         if config is None:

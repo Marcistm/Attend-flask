@@ -5,9 +5,8 @@ from urllib.parse import urljoin
 import pandas as pd
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS, cross_origin
-
 from lib.db import UseSQLServer
-from utils.common import my_md5, generate_token, allowed_file, random_filename
+from utils.common import my_md5, generate_token, allowed_file, random_filename, upload, upload_update, del_file
 
 secret = 'attend'
 random_str = 'attend~%!$#^&*'
@@ -122,10 +121,7 @@ def student_health_record_get():
 def ask_for_leave_preview():
     con=UseSQLServer()
     id=request.args.get('id')
-    sql="select a.start_time,a.end_time,a.reason,b.file_name,b.file_url "\
-        "from ask_for_leave a "\
-         "inner join file_table b on a.id=b.original_id "\
-         f"where b.type=N'请假' and a.id={id}"
+    sql=f"select a.start_time,a.end_time,a.reason from ask_for_leave a where a.id={id}"
     df=con.get_mssql_data(sql)
     return jsonify(code=200, msg="success",data=df.fillna('').to_dict('records'))
 
@@ -144,21 +140,8 @@ def ask_for_leave_add():
     con.write_table('ask_for_leave', df1)
     sql='SELECT MAX(id) as id FROM ask_for_leave'
     df=con.get_mssql_data(sql)
-    id = con.get_mssql_data(sql).iloc[0]['id']
-    df = pd.DataFrame(columns=["file_name", "file_url"])
-    for file in files:
-        if not allowed_file(file.filename):
-            return jsonify(code=400, msg="file type not allowed")
-        filename = random_filename(file.filename)
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(os.path.join(app.root_path, filepath))
-        file_url = urljoin(request.host_url, filepath)
-        if df.empty:
-            df = df.append({"file_name": file.filename, "file_url": file_url,'original_id':id,'type':'请假'}, ignore_index=True)
-        else:
-            df = df.append({"file_name": file.filename, "file_url": file_url,'original_id':id,'type':'请假'}, ignore_index=True)
-    con.write_table('file_table',df)
-    return jsonify(code=200, msg="提交成功")
+    id = df.iloc[0]['id']
+    return upload(files,id,'请假',con,app.root_path)
 
 @app.route('/ask_for_leave/delete', methods=['POST'])
 def ask_for_leave_delete():
@@ -168,17 +151,11 @@ def ask_for_leave_delete():
     sql=f"select file_url from file_table where original_id='{id}' and type=N'请假'"
     df=con.get_mssql_data(sql)
     files = df['file_url'].to_numpy()
-    for i in files:
-        i=os.path.basename(i)
-        i = os.path.join(app.root_path,UPLOAD_FOLDER, i)
-        # 删除文件
-        os.remove(i)
     sql = f"DELETE FROM ask_for_leave WHERE id={id}"
-    sql1 = f"delete from file_table where original_id={id} and type=N'请假'"
     con=UseSQLServer()
+    del_file(files,id,'请假',con,app.root_path)
     df=con.update_mssql_data(sql)
-    df1=con.update_mssql_data(sql1)
-    if df == 'success' and df1=='success':
+    if df == 'success' :
         return jsonify(code=200, msg=df)
     else:
         return jsonify(code=404, msg="删除失败")
@@ -196,10 +173,19 @@ def student_health_record_update():
     else:
         return jsonify(code=404, msg="更新失败")
 
-
 @app.route('/attachment/<path:filename>')
 def get_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route('/old_file/get',methods=['get'])
+def old_file_get():
+    original_id=request.args.get('original_id')
+    type=request.args.get('type')
+    sql=f"select file_name,file_url from file_table where type=N'{type}' and original_id='{original_id}'"
+    print(sql)
+    con=UseSQLServer()
+    df=con.get_mssql_data(sql)
+    return jsonify(code=200, msg="success", data=df.fillna('').to_dict('records'))
 
 @app.route('/ask_for_leave/update', methods=['POST'])
 def ask_for_leave_update():
@@ -209,30 +195,17 @@ def ask_for_leave_update():
     reason=data['reason']
     start_time=data['start_time']
     end_time =data['end_time']
-    df1=pd.DataFrame()
-    sql = f"UPDATE ask_for_leave SET reason='{reason}', start_time='{start_time}', end_time='{end_time}' WHERE id={id}"
+    old_file=eval(data['old_file'])
+    old_file_string="','".join(old_file)
+    new_file=request.files.getlist('file')
+    sql = f"UPDATE ask_for_leave SET reason = '{reason}', start_time = '{start_time}', end_time = '{end_time}' " \
+          f"WHERE id = {id}"
     con.update_mssql_data(sql)
-    sql=f"delete from file_table where original_id={id} and type=N'请假'"
-    con.update_mssql_data(sql)
-    files=data['file_list']
-    df = pd.DataFrame(columns=["file_name", "file_url"])
-    for file in files:
-        if not allowed_file(file.filename):
-            return jsonify(code=400, msg="file type not allowed")
-        filename = random_filename(file.filename)
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        file.save(os.path.join(app.root_path, filepath))
-        file_url = urljoin(request.host_url, filepath)
-        if df.empty:
-            df = df.append({"file_name": file.filename, "file_url": file_url,'original_id':id,'type':'请假'}, ignore_index=True)
-        else:
-            df = df.append({"file_name": file.filename, "file_url": file_url,'original_id':id,'type':'请假'}, ignore_index=True)
-    con.write_table('file_table',df)
-    return jsonify(code=200, msg="更新成功")
+    return upload_update(id,'请假',old_file_string,new_file,con,app.root_path)
 
-@app.route('/upload', methods=['POST'])
-def upload():
-    pass
+
+    
+
 
 
 if __name__ == '__main__':
