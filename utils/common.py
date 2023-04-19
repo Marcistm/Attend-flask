@@ -95,5 +95,3 @@ def del_file(urls,id,type,con,path):
         os.remove(i)
     sql = f"delete from file_table where original_id={id} and type=N'{type}'"
     con.update_mssql_data(sql)
-    pass
-

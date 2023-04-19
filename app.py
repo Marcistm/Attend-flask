@@ -55,6 +55,7 @@ def change_passwd():
 @app.route('/get/data', methods=['GET'])
 def get_data():
     sql = request.args.get('sql')
+    print(sql)
     con = UseSQLServer()
     df = con.get_mssql_data(sql)
     return jsonify(code=200, data=df.fillna('').to_dict('records'), msg="success")
@@ -203,6 +204,13 @@ def ask_for_leave_update():
     con.update_mssql_data(sql)
     return upload_update(id,'请假',old_file_string,new_file,con,app.root_path)
 
+@app.route('/student/info/get',methods=['get'])
+def student_info_get():
+    username=request.args.get('username')
+    sql=f"select * from student where name=N'{username}'"
+    con=UseSQLServer()
+    df=con.get_mssql_data(sql)
+    return jsonify(code=200, msg="success", data=df.fillna('').to_dict('records'))
 
     
 
