@@ -204,8 +204,8 @@ def ask_for_leave_update():
     con.update_mssql_data(sql)
     return upload_update(id,'请假',old_file_string,new_file,con,app.root_path)
 
-@app.route('/student/info/get',methods=['get'])
-def student_info_get():
+@app.route('/info/get',methods=['get'])
+def info_get():
     username=request.args.get('username')
     sql=f"select * from student where name=N'{username}'"
     con=UseSQLServer()
