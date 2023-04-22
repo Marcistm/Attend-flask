@@ -204,16 +204,28 @@ def ask_for_leave_update():
     con.update_mssql_data(sql)
     return upload_update(id,'请假',old_file_string,new_file,con,app.root_path)
 
-@app.route('/info/get',methods=['get'])
-def info_get():
+@app.route('/student/info/get',methods=['get'])
+def student_info_get():
     username=request.args.get('username')
     sql=f"select * from student where name=N'{username}'"
     con=UseSQLServer()
     df=con.get_mssql_data(sql)
     return jsonify(code=200, msg="success", data=df.fillna('').to_dict('records'))
 
-    
-
+@app.route('/process/submit',methods=['POST'])
+def process_submit():
+    con = UseSQLServer()
+    val = json.loads(request.get_data())
+    type=val['type']
+    username=val['username']
+    sql=f"insert process(type,username) values('{type}','{username}')"
+    con.update_mssql_data(sql)
+    sql=f"select max(id) process_id from process "
+    df1=con.get_mssql_data(sql)
+    df=pd.DataFrame(val['table'])
+    df['process_id']=df1.iloc[0]['process_id']
+    con.write_table('process_item', df)
+    return jsonify(code=200, msg="success")
 
 
 if __name__ == '__main__':
