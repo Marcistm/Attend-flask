@@ -85,6 +85,13 @@ def delete():
     else:
         return jsonify(code=404, msg="操作失败")
 
+@app.route('/see', methods=['get'])
+def see():
+    id = request.args.get('id')
+    con = UseSQLServer()
+    sql=f"select * from process_item where process_id={id}"
+    df=con.get_mssql_data(sql)
+    return jsonify(code=200, data=df.fillna('').to_dict('records'), msg="success")
 
 @app.route('/upload/data', methods=['POST'])
 def upload_data():
@@ -218,13 +225,25 @@ def process_submit():
     val = json.loads(request.get_data())
     type=val['type']
     username=val['username']
-    sql=f"insert process(type,username) values('{type}','{username}')"
+    sql=f"insert process(type,username) values(N'{type}','{username}')"
     con.update_mssql_data(sql)
     sql=f"select max(id) process_id from process "
     df1=con.get_mssql_data(sql)
     df=pd.DataFrame(val['table'])
     df['process_id']=df1.iloc[0]['process_id']
-    con.write_table('process_item', df)
+    con.write_table('process_item', df.fillna(''))
+    return jsonify(code=200, msg="success")
+
+@app.route('/process/update',methods=['post'])
+def update():
+    val = json.loads(request.get_data())
+    id=val['id']
+    df = pd.DataFrame(val['table'])
+    sql=f"delete from process_item where process_id={id}"
+    con = UseSQLServer()
+    con.update_mssql_data(sql)
+    df.drop(['id'], axis=1, inplace=True)
+    con.write_table('process_item', df.fillna(''))
     return jsonify(code=200, msg="success")
 
 

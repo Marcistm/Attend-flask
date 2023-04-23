@@ -58,15 +58,18 @@ class UseSQLServer(object):
         return True
 
     def write_table(self, tb_name, df):
+        # 构建 INSERT 语句
         columns = ', '.join(df.columns)
         values = ', '.join(['%s' for i in range(len(df.columns))])
-        insert_query = f'INSERT INTO {tb_name} ({columns}) VALUES ({values})'
-        # 执行INSERT语句
+        insert_query = f"INSERT INTO {tb_name} ({columns}) VALUES ({values})"
+
+        # 执行 INSERT 语句
         cursor = self.con.cursor()
         for row in df.itertuples(index=False):
+            # 将 row 转换为元组，并使用 N 前缀表示 Unicode 字符串
+            row = tuple([f"{str(i)}" if isinstance(i, str) else i for i in row])
             cursor.execute(insert_query, row)
         self.con.commit()
-
 
     def get_mssql_data(self, sql):
         cur = self.cur
