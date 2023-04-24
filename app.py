@@ -242,7 +242,8 @@ def update():
     sql=f"delete from process_item where process_id={id}"
     con = UseSQLServer()
     con.update_mssql_data(sql)
-    df.drop(['id'], axis=1, inplace=True)
+    df = df.loc[:, ['item1', 'item2','item3','item4','item5','item6']]
+    df['process_id'] = id
     con.write_table('process_item', df.fillna(''))
     return jsonify(code=200, msg="success")
 
