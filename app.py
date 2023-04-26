@@ -108,22 +108,19 @@ def see():
 
 @app.route('/upload/data', methods=['POST'])
 def upload_data():
-    val = json.loads(request.get_data())
-    con = UseSQLServer()
-    data = val['data']
-    table = val['table']
-    df = pd.DataFrame(data)
-    df_copy = df[['username', 'name']].copy()
-    if table == 'teacher':
-        df_copy.loc[:, 'privilege'] = 1
-    if table == 'student':
-        df_copy.loc[:, 'privilege'] = 0
-    tag = con.write_table(table, df)
-    if not tag:
-        return jsonify(code=404, msg='上传失败'), 404
-    tag = con.write_table('user_table', df_copy)
-    if not tag:
-        return jsonify(code=404, msg='上传失败'), 404
+    def convert_privilege(value):
+        if value == '学生':
+            return 0
+        elif value == '老师':
+            return 1
+        else:
+            return value
+    file = request.files['file']
+    df = pd.read_excel(file)
+    df = df.rename(columns={'用户名': 'username', '姓名': 'name', '身份': 'privilege'})
+    df['privilege'] = df['privilege'].apply(convert_privilege)
+    con=UseSQLServer()
+    con.write_table('user_table', df)
     return jsonify(code=200, msg='上传成功')
 
 
