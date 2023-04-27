@@ -7,11 +7,11 @@ from datetime import datetime
 import time
 from urllib.parse import urljoin
 import pandas as pd
-from flask import jsonify,request
+from flask import jsonify, request
+
 UPLOAD_FOLDER = './attachment'
 
-
-ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'docx'}
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif', 'docx', 'xlsx'}
 
 
 def allowed_file(filename):
@@ -49,7 +49,7 @@ def my_md5(s, salt=''):
     return m.hexdigest()
 
 
-def save_file(file,path):
+def save_file(file, path):
     if not allowed_file(file.filename):
         return None
     filename = random_filename(file.filename)
@@ -57,7 +57,8 @@ def save_file(file,path):
     file.save(os.path.join(path, filepath))
     return urljoin(request.host_url, filepath)
 
-def upload(files, original_id, type,con,path):
+
+def upload(files, original_id, type, con, path):
     df_list = []
     if files:
         for file in files:
@@ -70,14 +71,15 @@ def upload(files, original_id, type,con,path):
         con.write_table('file_table', df)
     return jsonify(code=200, msg="上传成功")
 
-def upload_update(original_id, type, url_string,files,con,path):
+
+def upload_update(original_id, type, url_string, files, con, path):
     sql = f"select file_url from file_table where original_id='{original_id}' and type=N'{type}' " \
           f"and file_url not in ('{url_string}')"
-    df=con.get_mssql_data(sql)
+    df = con.get_mssql_data(sql)
     url_list = df['file_url'].to_list()
     filename_list = [url.split('\\')[-1] for url in url_list]
     # 遍历列表中的文件名，删除对应的文件
-    if filename_list[0]!='':
+    if filename_list[0] != '':
         for filename in filename_list:
             filepath = os.path.join(path, UPLOAD_FOLDER, filename)  # 拼接文件路径
             if os.path.exists(filepath):  # 如果文件存在，则删除
@@ -85,12 +87,13 @@ def upload_update(original_id, type, url_string,files,con,path):
         sql = f"delete from file_table where original_id='{original_id}' and type=N'{type}' " \
               f"and file_url not in ('{url_string}')"
         con.update_mssql_data(sql)
-    return upload(files,original_id,type,con,path)
+    return upload(files, original_id, type, con, path)
 
-def del_file(urls,id,type,con,path):
+
+def del_file(urls, id, type, con, path):
     for i in urls:
-        i=os.path.basename(i)
-        i = os.path.join(path,UPLOAD_FOLDER, i)
+        i = os.path.basename(i)
+        i = os.path.join(path, UPLOAD_FOLDER, i)
         # 删除文件
         os.remove(i)
     sql = f"delete from file_table where original_id={id} and type=N'{type}'"

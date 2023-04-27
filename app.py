@@ -91,6 +91,16 @@ def delete():
     con = UseSQLServer()
     sql1 = f"delete from {table} where id='{id}'"
     df1 = con.update_mssql_data(sql1)
+    if table == 'notice':
+        sql = f"select file_url from file_table where original_id='{id}' and type=N'通知'"
+        df = con.get_mssql_data(sql)
+        files = df['file_url'].to_numpy()
+        del_file(files, id, '通知', con, app.root_path)
+    if table == 'board':
+        sql = f"select file_url from file_table where original_id='{id}' and type=N'公告'"
+        df = con.get_mssql_data(sql)
+        files = df['file_url'].to_numpy()
+        del_file(files, id, '公告', con, app.root_path)
     if df1 == 'success':
         return jsonify(code=200, msg=df1)
     else:
@@ -100,8 +110,9 @@ def delete():
 @app.route('/see', methods=['get'])
 def see():
     id = request.args.get('id')
+    table = request.args.get('table')
     con = UseSQLServer()
-    sql = f"select * from process_item where process_id={id}"
+    sql = f"select * from {table} where id={id}"
     df = con.get_mssql_data(sql)
     return jsonify(code=200, data=df.fillna('').to_dict('records'), msg="success")
 
@@ -115,11 +126,12 @@ def upload_data():
             return 1
         else:
             return value
+
     file = request.files['file']
     df = pd.read_excel(file)
     df = df.rename(columns={'用户名': 'username', '姓名': 'name', '身份': 'privilege'})
     df['privilege'] = df['privilege'].apply(convert_privilege)
-    con=UseSQLServer()
+    con = UseSQLServer()
     con.write_table('user_table', df)
     return jsonify(code=200, msg='上传成功')
 
@@ -208,7 +220,6 @@ def old_file_get():
     original_id = request.args.get('original_id')
     type = request.args.get('type')
     sql = f"select file_name,file_url from file_table where type=N'{type}' and original_id='{original_id}'"
-    print(sql)
     con = UseSQLServer()
     df = con.get_mssql_data(sql)
     return jsonify(code=200, msg="success", data=df.fillna('').to_dict('records'))
@@ -248,10 +259,10 @@ def process_submit():
     username = val['username']
     sql = f"insert process(type,username) values(N'{type}','{username}')"
     con.update_mssql_data(sql)
-    sql = f"select max(id) process_id from process "
+    sql = f"select max(id) id from process "
     df1 = con.get_mssql_data(sql)
     df = pd.DataFrame(val['table'])
-    df['process_id'] = df1.iloc[0]['process_id']
+    df['id'] = df1.iloc[0]['id']
     con.write_table('process_item', df.fillna(''))
     return jsonify(code=200, msg="success")
 
@@ -269,6 +280,7 @@ def update():
     con.write_table('process_item', df.fillna(''))
     return jsonify(code=200, msg="success")
 
+
 @app.route('/stu/submit', methods=['GET'])
 def submit():
     mysql_connect = UseSQLServer()
@@ -283,13 +295,57 @@ def submit():
           f"other_condition) VALUES ('{username}', '{is_infection}', '{temperature}', {location}, '{body_condition}'," \
           f" '{infection_count}','{other_condition}');"
     df = mysql_connect.update_mssql_data(sql)
-    sql=f"update student set tag='true' where username='{username}'"
+    sql = f"update student set tag='true' where username='{username}'"
     df = mysql_connect.update_mssql_data(sql)
     if df == 'success':
         return jsonify(code=200, msg=df)
     else:
         return jsonify(code=404, msg="insert failed")
 
+
+@app.route('/notice/submit', methods=['post'])
+def notice_submit():
+    con = UseSQLServer()
+    data = request.form
+    files = request.files.getlist('notice_file')
+    author = data['author']
+    text = data['text']
+    class_name = data['class']
+    df1 = pd.DataFrame()
+    df1 = df1.append(
+        {"author": author, "text": text, 'class': class_name},
+        ignore_index=True)
+    con.write_table('notice', df1)
+    sql = 'SELECT MAX(id) as id FROM notice'
+    df = con.get_mssql_data(sql)
+    id = df.iloc[0]['id']
+    return upload(files, id, '通知', con, app.root_path)
+
+
+@app.route('/board/submit', methods=['post'])
+def board_submit():
+    con = UseSQLServer()
+    data = request.form
+    files = request.files.getlist('board_file')
+    author = data['author']
+    text = data['text']
+    title = data['title']
+    df1 = pd.DataFrame()
+    df1 = df1.append(
+        {"author": author, "text": text, 'title': title},
+        ignore_index=True)
+    con.write_table('board', df1)
+    sql = 'SELECT MAX(id) as id FROM notice'
+    df = con.get_mssql_data(sql)
+    id = df.iloc[0]['id']
+    return upload(files, id, '公告', con, app.root_path)
+
+@app.route('/board/get', methods=['get'])
+def get_board():
+    con=UseSQLServer()
+    sql="select top 5 a.* from board a"
+    df=con.get_mssql_data(sql)
+    return jsonify(code=200, msg="success", data=df.fillna('').to_dict('records'))
 
 
 if __name__ == '__main__':
