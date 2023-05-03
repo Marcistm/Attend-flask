@@ -310,16 +310,57 @@ def notice_submit():
     files = request.files.getlist('notice_file')
     author = data['author']
     text = data['text']
-    class_name = data['class']
+    course = data['course']
     df1 = pd.DataFrame()
     df1 = df1.append(
-        {"author": author, "text": text, 'class': class_name},
+        {"author": author, "text": text, 'course': course},
         ignore_index=True)
     con.write_table('notice', df1)
     sql = 'SELECT MAX(id) as id FROM notice'
     df = con.get_mssql_data(sql)
     id = df.iloc[0]['id']
     return upload(files, id, '通知', con, app.root_path)
+
+
+@app.route('/class/submit', methods=['post'])
+def class_submit():
+    con = UseSQLServer()
+    data = json.loads(request.get_data())
+    name = data['name']
+    class_name = data['class']
+    df1 = pd.DataFrame()
+    df1 = df1.append(
+        {"name": name, 'class': class_name},
+        ignore_index=True)
+    con.write_table('class', df1)
+    return jsonify(code=200, msg="success")
+
+
+@app.route('/attend/submit', methods=['post'])
+def attend_submit():
+    con = UseSQLServer()
+    data = json.loads(request.get_data())
+    course = data['course']
+    class_name = data['class']
+    teacher = data['teacher']
+    df1 = pd.DataFrame()
+    df1 = df1.append(
+        {"course": course, 'class': class_name, 'teacher': teacher},
+        ignore_index=True)
+    con.write_table('course', df1)
+    return jsonify(code=200, msg="success")
+
+
+@app.route('/class/update', methods=['post'])
+def class_update():
+    con = UseSQLServer()
+    data = json.loads(request.get_data())
+    id = data['id']
+    name = data['name']
+    class_name = data['class']
+    sql = f"update class set name=N'{name}',class=N'{class_name}' where id={id}"
+    con.update_mssql_data(sql)
+    return jsonify(code=200, msg="success")
 
 
 @app.route('/board/submit', methods=['post'])
@@ -340,13 +381,62 @@ def board_submit():
     id = df.iloc[0]['id']
     return upload(files, id, '公告', con, app.root_path)
 
+
 @app.route('/board/get', methods=['get'])
 def get_board():
-    con=UseSQLServer()
-    sql="select top 5 a.* from board a"
-    df=con.get_mssql_data(sql)
+    con = UseSQLServer()
+    sql = "select top 5 a.* from board a"
+    df = con.get_mssql_data(sql)
     return jsonify(code=200, msg="success", data=df.fillna('').to_dict('records'))
 
+
+@app.route('/teacher/get', methods=['get'])
+def get_teacher():
+    con = UseSQLServer()
+    sql = "select name from teacher "
+    df = con.get_mssql_data(sql)
+    return jsonify(code=200, msg="success", data=df.fillna('').to_dict('records'))
+
+
+@app.route('/class/get', methods=['get'])
+def get_class():
+    con = UseSQLServer()
+    sql = "select class from class"
+    df = con.get_mssql_data(sql)
+    return jsonify(code=200, msg="success", data=df.fillna('').to_dict('records'))
+
+
+@app.route('/course/get', methods=['get'])
+def get_course():
+    teacher = request.args.get('teacher')
+    con = UseSQLServer()
+    sql = f"select course,class from course where teacher='{teacher}'"
+    df = con.get_mssql_data(sql)
+    df['result'] = df['course'] + '-' + df['class']
+    return jsonify(code=200, msg="success", data=df.fillna('').to_dict('records'))
+
+
+@app.route('/attend/insert', methods=['get'])
+def attend_insert():
+    con = UseSQLServer()
+    class_name=request.args.get('class')
+    course=request.args.get('course')
+    sql=f"select count(1) total from studnet where class=N'{class_name}'"
+    df=con.get_mssql_data(sql)
+    sql=f"insert into attend(class,course,total) values(N'{class_name}',N'{course}',{df.iloc[0]['total']})"
+    con.update_mssql_data(sql)
+    sql=f"select max(id) id from attend where class=N'{class_name}' and course=N'{course}'"
+    df=con.get_mssql_data(sql)
+    return jsonify(code=200, msg="success",id=str(df.iloc[0]['id']))
+
+@app.route('/attend/start', methods=['get'])
+def attend_start():
+    con = UseSQLServer()
+    code=request.args.get('code')
+    id=request.args.get('id')
+    sql=f"update attend set code='{code}' where  id={id}"
+    con.update_mssql_data(sql)
+    return jsonify(code=200, msg="success")
 
 if __name__ == '__main__':
     app.run(debug='True', port=5001)
