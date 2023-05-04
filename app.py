@@ -393,7 +393,7 @@ def get_board():
 @app.route('/teacher/get', methods=['get'])
 def get_teacher():
     con = UseSQLServer()
-    sql = "select name from teacher "
+    sql = "select name from user_table where privilege=1"
     df = con.get_mssql_data(sql)
     return jsonify(code=200, msg="success", data=df.fillna('').to_dict('records'))
 
@@ -421,12 +421,14 @@ def attend_insert():
     con = UseSQLServer()
     class_name=request.args.get('class')
     course=request.args.get('course')
-    sql=f"select count(1) total from studnet where class=N'{class_name}'"
+    sql=f"select count(1) total from student where class=N'{class_name}'"
     df=con.get_mssql_data(sql)
     sql=f"insert into attend(class,course,total) values(N'{class_name}',N'{course}',{df.iloc[0]['total']})"
     con.update_mssql_data(sql)
     sql=f"select max(id) id from attend where class=N'{class_name}' and course=N'{course}'"
     df=con.get_mssql_data(sql)
+    sql=f"update student set attend_tag='true' where class=N'{class_name}'"
+    con.update_mssql_data(sql)
     return jsonify(code=200, msg="success",id=str(df.iloc[0]['id']))
 
 @app.route('/attend/start', methods=['get'])
