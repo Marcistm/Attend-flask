@@ -321,7 +321,15 @@ def notice_submit():
     id = df.iloc[0]['id']
     return upload(files, id, '通知', con, app.root_path)
 
-
+@app.route('/notice/get',methods=['get'])
+def notice_get():
+    username=request.args.get('username')
+    sql="select a.* from notice a inner join course b on a.course=b.course inner join student c on b.class=c.class " \
+        f"where c.username='{username}'"
+    con=UseSQLServer()
+    df=con.get_mssql_data(sql)
+    print(df)
+    return jsonify(code=200, msg="success",data=df.fillna('').to_dict('records'))
 @app.route('/class/submit', methods=['post'])
 def class_submit():
     con = UseSQLServer()
@@ -438,6 +446,14 @@ def attend_start():
     id=request.args.get('id')
     sql=f"update attend set code='{code}' where  id={id}"
     con.update_mssql_data(sql)
+    return jsonify(code=200, msg="success")
+
+@app.route('/student_info/submit', methods=['post'])
+def studnet_info_submit():
+    con = UseSQLServer()
+    val = json.loads(request.get_data())
+    df=pd.DataFrame(val,index=[0])
+    con.write_table('student', df)
     return jsonify(code=200, msg="success")
 
 if __name__ == '__main__':
