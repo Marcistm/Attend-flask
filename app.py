@@ -112,7 +112,10 @@ def see():
     id = request.args.get('id')
     table = request.args.get('table')
     con = UseSQLServer()
-    sql = f"select * from {table} where id={id}"
+    if table == 'process':
+        sql = f"select * from process_item where process_id={id}"
+    else:
+        sql = f"select * from {table} where id={id}"
     df = con.get_mssql_data(sql)
     return jsonify(code=200, data=df.fillna('').to_dict('records'), msg="success")
 
@@ -266,6 +269,37 @@ def process_submit():
     con.write_table('process_item', df.fillna(''))
     return jsonify(code=200, msg="success")
 
+@app.route('/process/get',methods=['get'])
+def process_get():
+    name = request.args.get('name')
+    sql=f"select class from class where name=N'{name}'"
+    con=UseSQLServer()
+    df=con.get_mssql_data(sql)
+    class_name=df.iloc[0]['class']
+    sql=f"select username from student where class=N'{class_name}'"
+    df=con.get_mssql_data(sql)
+    username="','".join(df['username'])
+    sql=f"select id,username,time,condition from ask_for_leave where username in ('{username}')"
+    df_leave=con.get_mssql_data(sql)
+    df_leave['type']='请假'
+    sql=f"select id,username,time,type,condition from process where username in ('{username}')"
+    df_process=con.get_mssql_data(sql)
+    result = pd.concat([df_leave, df_process])
+    return jsonify(code=200, msg="success",data=result.fillna('').to_dict('records'))
+
+@app.route('/process/approval',methods=['get'])
+def process_approval():
+    id=request.args.get('id')
+    type=request.args.get('type')
+    condition=request.args.get('condition')
+    con=UseSQLServer()
+    if type == '请假':
+        sql=f"update ask_for_leave set condition='{condition}' where id={id}"
+        con.update_mssql_data(sql)
+    else:
+        sql=f"update process set condition='{condition}' where id={id}"
+        con.update_mssql_data(sql)
+    return jsonify(code=200, msg="success")
 
 @app.route('/process/update', methods=['post'])
 def update():
