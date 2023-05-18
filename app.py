@@ -463,9 +463,10 @@ def attend_insert():
     con = UseSQLServer()
     class_name=request.args.get('class')
     course=request.args.get('course')
+    time=request.args.get('time')
     sql=f"select count(1) total from student where class=N'{class_name}'"
     df=con.get_mssql_data(sql)
-    sql=f"insert into attend(class,course,total) values(N'{class_name}',N'{course}',{df.iloc[0]['total']})"
+    sql=f"insert into attend(class,course,total,minute) values(N'{class_name}',N'{course}',{df.iloc[0]['total']},{time})"
     con.update_mssql_data(sql)
     sql=f"select max(id) id from attend where class=N'{class_name}' and course=N'{course}'"
     df=con.get_mssql_data(sql)
@@ -473,6 +474,27 @@ def attend_insert():
     con.update_mssql_data(sql)
     return jsonify(code=200, msg="success",id=str(df.iloc[0]['id']))
 
+@app.route('/attend/get',methods=['get'])
+def attend_get():
+    username = request.args.get('username')
+    sql=f"select class from student where username='{username}'"
+    con=UseSQLServer()
+    df=con.get_mssql_data(sql)
+    class_name=df.iloc[0]['class']
+    sql=f"select top 1 time,minute from attend where class=N'{class_name}' order by id desc"
+    df=con.get_mssql_data(sql)
+    time=df.iloc[0]['time']
+    minute=df.iloc[0]['minute']
+    target_time=time+datetime.timedelta(minutes=int(minute))
+    current_time = datetime.datetime.now()
+    if target_time>current_time:
+        tag=True
+    else:
+        tag=False
+    print(target_time)
+    print(current_time)
+    print(tag)
+    return jsonify(code=200, msg="success", tag=tag)
 @app.route('/attend/start', methods=['get'])
 def attend_start():
     con = UseSQLServer()
@@ -481,6 +503,40 @@ def attend_start():
     sql=f"update attend set code='{code}' where  id={id}"
     con.update_mssql_data(sql)
     return jsonify(code=200, msg="success")
+
+@app.route('/attend/emd', methods=['get'])
+def attend_end():
+    class_name=request.args.get('class_name')
+    id=request.args.get('id')
+    sql=f"select username from student where class=N'{class_name}' and attend_tag='false'"
+    con=UseSQLServer()
+    df=con.get_mssql_data(sql)
+    usernames=",".join(df['username'])
+    sql=f"update attend set usernames='{usernames}' where id={id}"
+    con.update_mssql_data(sql)
+    return jsonify(code=200, msg="success",usernames=usernames)
+@app.route('/attend/check', methods=['get'])
+def attend_check():
+    con=UseSQLServer()
+    code=request.args.get('code')
+    username = request.args.get('username')
+    sql = f"select class from student where username='{username}'"
+    con = UseSQLServer()
+    df = con.get_mssql_data(sql)
+    class_name = df.iloc[0]['class']
+    sql = f"select top 1 id,code from attend where class=N'{class_name}' order by id desc"
+    df=con.get_mssql_data(sql)
+    sql_code=df.iloc[0]['code']
+    id=df.iloc[0]['id']
+    if sql_code == code:
+        sql=f"update student set attend_tag='true' where username='{username}'"
+        con.update_mssql_data(sql)
+        sql=f"update attend set attend=attend+1 where id={id}"
+        con.update_mssql_data(sql)
+        tag=True
+    else:
+        tag=False
+    return jsonify(code=200, msg="success", tag=tag)
 
 @app.route('/student_info/submit', methods=['post'])
 def studnet_info_submit():
