@@ -114,7 +114,7 @@ def see():
     table = request.args.get('table')
     con = UseSQLServer()
     if table == 'process':
-        sql = f"select * from process_item where process_id={id}"
+        sql = f"select * from process_item where id={id}"
     else:
         sql = f"select * from {table} where id={id}"
     df = con.get_mssql_data(sql)
@@ -310,11 +310,11 @@ def update():
     val = json.loads(request.get_data())
     id = val['id']
     df = pd.DataFrame(val['table'])
-    sql = f"delete from process_item where process_id={id}"
+    sql = f"delete from process_item where id={id}"
     con = UseSQLServer()
     con.update_mssql_data(sql)
     df = df.loc[:, ['item1', 'item2', 'item3', 'item4', 'item5', 'item6']]
-    df['process_id'] = id
+    df['id'] = id
     con.write_table('process_item', df.fillna(''))
     return jsonify(code=200, msg="success")
 
